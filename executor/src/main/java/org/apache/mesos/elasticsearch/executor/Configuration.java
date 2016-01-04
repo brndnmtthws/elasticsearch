@@ -78,4 +78,8 @@ public class Configuration {
     public String getElasticsearchClusterName() {
         return elasticsearchCLI.getElasticsearchClusterName();
     }
+
+    public String getConsulEndpoint() {
+        return elasticsearchCLI.getConsul();
+    }
 }

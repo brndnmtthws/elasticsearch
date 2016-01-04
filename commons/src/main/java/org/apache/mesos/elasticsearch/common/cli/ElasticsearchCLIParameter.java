@@ -39,6 +39,13 @@ public class ElasticsearchCLIParameter {
         elasticsearchNodes = numberOfNodes;
     }
 
+    public static final String CONSUL = "--consul";
+    @Parameter(names = {CONSUL}, description = "Consul endpoint")
+    public static String consul = "";
+    public String getConsul() {
+        return consul;
+    }
+
     /**
      * Adds a warning message if an even number is encountered
      */
