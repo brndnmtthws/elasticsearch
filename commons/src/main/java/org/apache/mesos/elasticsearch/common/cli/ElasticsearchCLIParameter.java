@@ -41,9 +41,15 @@ public class ElasticsearchCLIParameter {
 
     public static final String CONSUL = "--consul";
     @Parameter(names = {CONSUL}, description = "Consul endpoint")
-    public static String consul = "";
+    private static String consul = "";
     public String getConsul() {
         return consul;
+    }
+    public static final String ADVERTISEIP = "--advertiseIp";
+    @Parameter(names = {ADVERTISEIP}, description = "Register with provided IP address")
+    private static String advertiseIp = "";
+    public static String getAdvertiseIp() {
+        return advertiseIp;
     }
 
     /**

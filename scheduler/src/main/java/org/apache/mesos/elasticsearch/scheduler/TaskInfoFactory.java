@@ -66,7 +66,7 @@ public class TaskInfoFactory {
         LOGGER.debug("Attempting to resolve hostname: " + hostname);
         InetSocketAddress address = new InetSocketAddress(hostname, ports.get(0));
         String hostAddress = address.getAddress().getHostAddress(); // Note this will always resolve because of the check in OfferStrategy
-
+        configuration.setAdvertiseIp(hostAddress);
         return Protos.TaskInfo.newBuilder()
                 .setName(configuration.getTaskName())
                 .setData(toData(offer.getHostname(), hostAddress, clock.nowUTC()))
@@ -129,7 +129,8 @@ public class TaskInfoFactory {
                         ZookeeperCLIParameter.ZOOKEEPER_MESOS_URL, configuration.getMesosZKURL(),
                         ZookeeperCLIParameter.ZOOKEEPER_FRAMEWORK_URL, "zk://" + configuration.getFrameworkZKURL(), // Make framework url a valid url again.
                         ZookeeperCLIParameter.ZOOKEEPER_FRAMEWORK_TIMEOUT, String.valueOf(configuration.getFrameworkZKTimeout()),
-                        ElasticsearchCLIParameter.CONSUL, configuration.getConsul()
+                        ElasticsearchCLIParameter.CONSUL, configuration.getConsul(),
+                        ElasticsearchCLIParameter.ADVERTISEIP, configuration.getAdvertiseIp()
                 ));
         addIfNotEmpty(args, ElasticsearchCLIParameter.ELASTICSEARCH_SETTINGS_LOCATION, configuration.getElasticsearchSettingsLocation());
         addIfNotEmpty(args, ElasticsearchCLIParameter.ELASTICSEARCH_CLUSTER_NAME, configuration.getElasticsearchClusterName());

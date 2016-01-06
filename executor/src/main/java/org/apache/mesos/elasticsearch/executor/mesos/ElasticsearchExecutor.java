@@ -32,7 +32,7 @@ public class ElasticsearchExecutor implements Executor {
     public static final Logger LOGGER = Logger.getLogger(ElasticsearchExecutor.class.getCanonicalName());
     private final TaskStatus taskStatus;
     private Configuration configuration;
-    private Consul consul = null;
+    private Consul consul;
     private Node node;
 
     public ElasticsearchExecutor(Launcher launcher, TaskStatus taskStatus) {
@@ -66,14 +66,13 @@ public class ElasticsearchExecutor implements Executor {
         // Send status update, starting
         driver.sendStatusUpdate(taskStatus.starting());
 
-        createConsul(configuration.getConsulEndpoint());
-
         try {
             // Parse CommandInfo arguments
             List<String> list = task.getExecutor().getCommand().getArgumentsList();
             String[] args = list.toArray(new String[list.size()]);
             LOGGER.debug("Using arguments: " + Arrays.toString(args));
             configuration = new Configuration(args);
+            createConsul(configuration.getConsulEndpoint());
 
             // Add settings provided in es Settings file
             URL elasticsearchSettingsPath = java.net.URI.create(configuration.getElasticsearchSettingsLocation()).toURL();
@@ -98,7 +97,7 @@ public class ElasticsearchExecutor implements Executor {
             // Launch Node
             node = launcher.launch();
 
-//            registerConsulService();
+            registerConsulService(ports.getRuntimeSettings().get("http.port"), configuration.getAdvertiseIp());
 
             // Send status update, running
             driver.sendStatusUpdate(taskStatus.running());
@@ -154,18 +153,22 @@ public class ElasticsearchExecutor implements Executor {
 
     private void createConsul(String endpoint) {
         if (endpoint.isEmpty()) {
+            LOGGER.debug("Consul endpoint is empty");
             return;
         }
+        LOGGER.debug("Building consul with endpoint " + endpoint);
         consul = Consul.builder().withUrl(endpoint).build();
 
     }
 
-    private void registerConsulService(int port, String address) {
+    private void registerConsulService(String port, String address) {
         if (consul == null) {
+            LOGGER.debug("Consul object is null");
             return;
         }
         AgentClient consulAgent = consul.agentClient();
-        Registration registration = ImmutableRegistration.builder().port(port).address(address).name("es-node").build();
+        LOGGER.debug("Agent object ok. Registering port " + port + " on " + address);
+        Registration registration = ImmutableRegistration.builder().port(Integer.parseInt(port)).address(address).id("es-node-" + address.replace(".", "-")).name("es-node").build();
         consulAgent.register(registration);
 
     }

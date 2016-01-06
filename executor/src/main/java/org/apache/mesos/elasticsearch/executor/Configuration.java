@@ -82,4 +82,7 @@ public class Configuration {
     public String getConsulEndpoint() {
         return elasticsearchCLI.getConsul();
     }
+    public String getAdvertiseIp() {
+        return elasticsearchCLI.getAdvertiseIp();
+    }
 }

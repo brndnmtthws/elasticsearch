@@ -46,7 +46,8 @@ public class Configuration {
     private static final Logger LOGGER = Logger.getLogger(Configuration.class);
     public static final String FRAMEWORK_USE_DOCKER = "--frameworkUseDocker";
     public static final String JAVA_HOME = "--javaHome";
-    public static final String CONSUL = "--consul";
+    public static final String CONSUL = "--passConsulEndpoint";
+//    public static final String ADVERTISEIP = "--advertiseIp";
     @Parameter(names = {EXECUTOR_HEALTH_DELAY}, description = "The delay between executor healthcheck requests (ms).", validateValueWith = CLIValidators.PositiveLong.class)
     private static Long executorHealthDelay = 30000L;
     // **** ZOOKEEPER
@@ -95,6 +96,8 @@ public class Configuration {
     private String javaHome = "";
     @Parameter(names = {CONSUL}, description = "Use consul API endpoint to register Elasticsearch nodes")
     private static String consul = "";
+//    @Parameter(names = {ADVERTISEIP}, description = "Advertise on provided IP address")
+    private static String advertiseIp = "";
     // ****************** Runtime configuration **********************
 
     public Configuration(String... args) {
@@ -272,6 +275,13 @@ public class Configuration {
         return consul;
     }
 
+    public static String getAdvertiseIp() {
+        return advertiseIp;
+    }
+
+    public static void setAdvertiseIp(String advertiseIp) {
+        Configuration.advertiseIp = advertiseIp;
+    }
 
     /**
      * Ensures that the number is > than the EXECUTOR_HEALTH_DELAY
