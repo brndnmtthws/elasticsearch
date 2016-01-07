@@ -179,7 +179,12 @@ public class ElasticsearchExecutor implements Executor {
         AgentClient consulAgent = consul.agentClient();
         LOGGER.debug("Agent object ok. Registering port " + port + " on " + address);
         String serviceId = "es-" + address.replace(".", "-");
-        Registration registration = ImmutableRegistration.builder().port(Integer.parseInt(port)).address(address).id(serviceId).name("elasticsearch").build();
+        Registration registration = ImmutableRegistration.builder()
+                .port(Integer.parseInt(port))
+                .address(address).id(serviceId)
+                .check(Registration.RegCheck.http(String.format("http://%s:%s", address, port), 5))
+                .name("elasticsearch")
+                .build();
         consulAgent.register(registration);
         try {
             consulAgent.pass(serviceId);
