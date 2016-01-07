@@ -124,13 +124,17 @@ public class TaskInfoFactory {
 
     private Protos.CommandInfo.Builder newCommandInfo(Configuration configuration) {
         ExecutorEnvironmentalVariables executorEnvironmentalVariables = new ExecutorEnvironmentalVariables(configuration);
+        String advertiseIp = "";
+        if (!configuration.isFrameworkUseDocker()) {
+                advertiseIp = configuration.getAdvertiseIp();
+        }
         List<String> args = new ArrayList<>(
                 asList(
                         ZookeeperCLIParameter.ZOOKEEPER_MESOS_URL, configuration.getMesosZKURL(),
                         ZookeeperCLIParameter.ZOOKEEPER_FRAMEWORK_URL, "zk://" + configuration.getFrameworkZKURL(), // Make framework url a valid url again.
                         ZookeeperCLIParameter.ZOOKEEPER_FRAMEWORK_TIMEOUT, String.valueOf(configuration.getFrameworkZKTimeout()),
                         ElasticsearchCLIParameter.CONSUL, configuration.getConsul(),
-                        ElasticsearchCLIParameter.ADVERTISEIP, configuration.getAdvertiseIp()
+                        ElasticsearchCLIParameter.ADVERTISEIP, advertiseIp
                 ));
         addIfNotEmpty(args, ElasticsearchCLIParameter.ELASTICSEARCH_SETTINGS_LOCATION, configuration.getElasticsearchSettingsLocation());
         addIfNotEmpty(args, ElasticsearchCLIParameter.ELASTICSEARCH_CLUSTER_NAME, configuration.getElasticsearchClusterName());

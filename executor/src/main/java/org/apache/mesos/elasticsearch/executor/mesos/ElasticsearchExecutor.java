@@ -2,7 +2,7 @@ package org.apache.mesos.elasticsearch.executor.mesos;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.orbitz.consul.AgentClient;
-import com.orbitz.consul.model.agent.Agent;
+import com.orbitz.consul.NotRegisteredException;
 import com.orbitz.consul.model.agent.ImmutableRegistration;
 import com.orbitz.consul.model.agent.Registration;
 import org.apache.log4j.Logger;
@@ -21,6 +21,7 @@ import com.orbitz.consul.Consul;
 import java.net.*;
 import java.security.InvalidParameterException;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 
 /**
@@ -32,6 +33,7 @@ public class ElasticsearchExecutor implements Executor {
     public static final Logger LOGGER = Logger.getLogger(ElasticsearchExecutor.class.getCanonicalName());
     private final TaskStatus taskStatus;
     private Configuration configuration;
+    private String registerIpAddress;
     private Consul consul;
     private Node node;
 
@@ -72,6 +74,14 @@ public class ElasticsearchExecutor implements Executor {
             String[] args = list.toArray(new String[list.size()]);
             LOGGER.debug("Using arguments: " + Arrays.toString(args));
             configuration = new Configuration(args);
+            if (configuration.getAdvertiseIp().isEmpty()) {
+                registerIpAddress = determineExternalIp();
+                if (registerIpAddress.isEmpty()) {
+                    LOGGER.error("Cannot determine external IP address to register with");
+                }
+            } else {
+                registerIpAddress = configuration.getAdvertiseIp();
+            }
             createConsul(configuration.getConsulEndpoint());
 
             // Add settings provided in es Settings file
@@ -96,12 +106,11 @@ public class ElasticsearchExecutor implements Executor {
 
             // Launch Node
             node = launcher.launch();
-
-            registerConsulService(ports.getRuntimeSettings().get("http.port"), configuration.getAdvertiseIp());
+            registerConsulService(ports.getRuntimeSettings().get("http.port"), registerIpAddress);
 
             // Send status update, running
             driver.sendStatusUpdate(taskStatus.running());
-        } catch (InvalidParameterException | MalformedURLException e) {
+        } catch (InvalidParameterException | MalformedURLException | BindException e) {
             driver.sendStatusUpdate(taskStatus.failed());
             LOGGER.error(e);
         }
@@ -161,15 +170,40 @@ public class ElasticsearchExecutor implements Executor {
 
     }
 
-    private void registerConsulService(String port, String address) {
+    private void registerConsulService(String port, String address)  {
         if (consul == null) {
             LOGGER.debug("Consul object is null");
             return;
         }
         AgentClient consulAgent = consul.agentClient();
         LOGGER.debug("Agent object ok. Registering port " + port + " on " + address);
-        Registration registration = ImmutableRegistration.builder().port(Integer.parseInt(port)).address(address).id("es-node-" + address.replace(".", "-")).name("es-node").build();
+        String serviceId = "es-" + address.replace(".", "-");
+        Registration registration = ImmutableRegistration.builder().port(Integer.parseInt(port)).address(address).id(serviceId).name("elasticsearch").build();
         consulAgent.register(registration);
+        try {
+            consulAgent.pass(serviceId);
+        } catch (NotRegisteredException e) {
+            LOGGER.error("Pass not succeeded: " + e.getMessage());
+        }
 
+    }
+    @SuppressWarnings("PMD.AvoidUsingHardCodedIP")
+    private String determineExternalIp() throws BindException {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface netInterface = interfaces.nextElement();
+                Enumeration<InetAddress> inetAddresses = netInterface.getInetAddresses();
+                while (inetAddresses.hasMoreElements()) {
+                    InetAddress inetAddress = inetAddresses.nextElement();
+                    if (inetAddress.getHostAddress() != "127.0.0.1") { // todo: ipv6
+                        return inetAddress.getHostAddress();
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            LOGGER.error(e.getStackTrace());
+        }
+        throw new BindException("Cannot determine external IP address to register with");
     }
 }
