@@ -17,6 +17,7 @@ import org.apache.mesos.elasticsearch.executor.model.ZooKeeperModel;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.node.Node;
 import com.orbitz.consul.Consul;
+import org.elasticsearch.search.aggregations.support.format.ValueParser;
 
 import java.net.*;
 import java.security.InvalidParameterException;
@@ -196,7 +197,7 @@ public class ElasticsearchExecutor implements Executor {
                 Enumeration<InetAddress> inetAddresses = netInterface.getInetAddresses();
                 while (inetAddresses.hasMoreElements()) {
                     InetAddress inetAddress = inetAddresses.nextElement();
-                    if (inetAddress.getHostAddress() != "127.0.0.1") { // todo: ipv6
+                    if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
                         return inetAddress.getHostAddress();
                     }
                 }
