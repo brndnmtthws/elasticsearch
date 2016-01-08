@@ -189,11 +189,11 @@ public class ElasticsearchExecutor implements Executor {
         try {
             consulAgent.pass(serviceId);
         } catch (NotRegisteredException e) {
-            LOGGER.error("Pass not succeeded: " + e.getMessage());
+            LOGGER.error("Pass not succeeded: " + e.getStackTrace());
         }
 
     }
-    @SuppressWarnings("PMD.AvoidUsingHardCodedIP")
+
     private String determineExternalIp() throws BindException {
         try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();

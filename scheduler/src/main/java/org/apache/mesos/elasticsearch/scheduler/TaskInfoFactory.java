@@ -139,8 +139,9 @@ public class TaskInfoFactory {
         List<String> args = new ArrayList<>();
         addIfNotEmpty(args, ElasticsearchCLIParameter.ELASTICSEARCH_SETTINGS_LOCATION, configuration.getElasticsearchSettingsLocation());
         addIfNotEmpty(args, ElasticsearchCLIParameter.ELASTICSEARCH_CLUSTER_NAME, configuration.getElasticsearchClusterName());
-	addIfNotEmpty(args, ElasticsearchCLIParameter.CONSUL, configuration.getConsul());
-	addIfNotEmpty(args, ElasticsearchCLIParameter.ADVERTISEIP, advertiseIp);
+        addIfNotEmpty(args, ElasticsearchCLIParameter.CONSUL, configuration.getConsul());
+        addIfNotEmpty(args, ElasticsearchCLIParameter.ADVERTISEIP, advertiseIp);
+
         args.addAll(asList(ElasticsearchCLIParameter.ELASTICSEARCH_NODES, Integer.toString(configuration.getElasticsearchNodes())));
         List<Protos.TaskInfo> taskList = clusterState.getTaskList();
         String hostAddress = "";
