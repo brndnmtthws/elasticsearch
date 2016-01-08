@@ -96,10 +96,8 @@ public class Configuration {
     private InetSocketAddress frameworkFileServerAddress;
     @Parameter(names = {JAVA_HOME}, description = "(Only when " + FRAMEWORK_USE_DOCKER + " is false) When starting in jar mode, if java is not on the path, you can specify the path here.", validateWith = CLIValidators.NotEmptyString.class)
     private String javaHome = "";
-    @Parameter(names = {CONSUL}, description = "Use consul API endpoint to register Elasticsearch nodes")
-    private static String consul = "";
-//    @Parameter(names = {ADVERTISEIP}, description = "Advertise on provided IP address")
-    private static String advertiseIp = "";
+    @Parameter(names = {CONSUL}, description = "Use consulEndpoint API endpoint to register Elasticsearch nodes")
+    private static String consulEndpoint = "";
     @Parameter(names = {USE_IP_ADDRESS}, arity = 1, description = "If true, the framework will resolve the local ip address. If false, it uses the hostname.")
     private Boolean isUseIpAddress = false;
 
@@ -265,15 +263,7 @@ public class Configuration {
     }
 
     public String getConsul() {
-        return consul;
-    }
-
-    public static String getAdvertiseIp() {
-        return advertiseIp;
-    }
-
-    public static void setAdvertiseIp(String advertiseIp) {
-        Configuration.advertiseIp = advertiseIp;
+        return consulEndpoint;
     }
 
     /**

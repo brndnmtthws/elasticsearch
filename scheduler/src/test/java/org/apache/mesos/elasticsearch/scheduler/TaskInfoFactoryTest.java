@@ -60,6 +60,7 @@ public class TaskInfoFactoryTest {
         when(configuration.getElasticsearchClusterName()).thenReturn("cluster-name");
         when(configuration.getDataDir()).thenReturn("/var/lib/mesos/slave/elasticsearch");
         when(configuration.getFrameworkRole()).thenReturn("some-framework-role");
+        when(configuration.getConsul()).thenReturn("");
         when(configuration.isFrameworkUseDocker()).thenReturn(true);
     }
 

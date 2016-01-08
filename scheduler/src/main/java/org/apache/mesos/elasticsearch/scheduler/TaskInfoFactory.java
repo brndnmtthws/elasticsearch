@@ -74,7 +74,6 @@ public class TaskInfoFactory {
         LOGGER.debug("Attempting to resolve hostname: " + hostname);
         InetSocketAddress address = new InetSocketAddress(hostname, ports.get(0));
         String hostAddress = address.getAddress().getHostAddress(); // Note this will always resolve because of the check in OfferStrategy
-        configuration.setAdvertiseIp(hostAddress);
         return Protos.TaskInfo.newBuilder()
                 .setName(configuration.getTaskName())
                 .setData(toData(offer.getHostname(), hostAddress, clock.nowUTC()))
@@ -132,15 +131,11 @@ public class TaskInfoFactory {
 
     private Protos.CommandInfo.Builder newCommandInfo(Configuration configuration) {
         ExecutorEnvironmentalVariables executorEnvironmentalVariables = new ExecutorEnvironmentalVariables(configuration);
-        String advertiseIp = "";
-        if (!configuration.isFrameworkUseDocker()) {
-                advertiseIp = configuration.getAdvertiseIp();
-        }
+
         List<String> args = new ArrayList<>();
         addIfNotEmpty(args, ElasticsearchCLIParameter.ELASTICSEARCH_SETTINGS_LOCATION, configuration.getElasticsearchSettingsLocation());
         addIfNotEmpty(args, ElasticsearchCLIParameter.ELASTICSEARCH_CLUSTER_NAME, configuration.getElasticsearchClusterName());
         addIfNotEmpty(args, ElasticsearchCLIParameter.CONSUL, configuration.getConsul());
-        addIfNotEmpty(args, ElasticsearchCLIParameter.ADVERTISEIP, advertiseIp);
 
         args.addAll(asList(ElasticsearchCLIParameter.ELASTICSEARCH_NODES, Integer.toString(configuration.getElasticsearchNodes())));
         List<Protos.TaskInfo> taskList = clusterState.getTaskList();
@@ -151,6 +146,11 @@ public class TaskInfoFactory {
             InetSocketAddress transportAddress = clusterState.getGuiTaskList().get(taskId).getTransportAddress();
             hostAddress = networkUtils.addressToString(transportAddress, configuration.getIsUseIpAddress()).replace("http://", "");
         }
+        String advertiseIp = "";
+        if (!configuration.isFrameworkUseDocker()) {
+            advertiseIp = hostAddress;
+        }
+        addIfNotEmpty(args, ElasticsearchCLIParameter.ADVERTISEIP, advertiseIp);
         addIfNotEmpty(args, HostsCLIParameter.ELASTICSEARCH_HOST, hostAddress);
 
         Protos.CommandInfo.Builder commandInfoBuilder = Protos.CommandInfo.newBuilder()
