@@ -35,6 +35,7 @@ public class ElasticsearchExecutor implements Executor {
     private final TaskStatus taskStatus;
     private Configuration configuration;
     private String registerIpAddress;
+    private String serviceId;
     private Consul consul;
     private Node node;
 
@@ -159,6 +160,9 @@ public class ElasticsearchExecutor implements Executor {
         if (node != null) {
             node.close();
         }
+        if (!serviceId.isEmpty()) {
+            consul.agentClient().deregister(serviceId);
+        }
     }
 
     private void createConsul(String endpoint) {
@@ -178,7 +182,7 @@ public class ElasticsearchExecutor implements Executor {
         }
         AgentClient consulAgent = consul.agentClient();
         LOGGER.debug("Agent object ok. Registering port " + port + " on " + address);
-        String serviceId = "es-" + address.replace(".", "-");
+        serviceId = "es-" + address.replace(".", "-");
         Registration registration = ImmutableRegistration.builder()
                 .port(Integer.parseInt(port))
                 .address(address).id(serviceId)
@@ -189,7 +193,7 @@ public class ElasticsearchExecutor implements Executor {
         try {
             consulAgent.pass(serviceId);
         } catch (NotRegisteredException e) {
-            LOGGER.error("Pass not succeeded: " + e.getStackTrace());
+            LOGGER.error("Pass not succeeded: " + e.getMessage());
         }
 
     }
