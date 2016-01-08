@@ -3,7 +3,6 @@ package org.apache.mesos.elasticsearch.scheduler;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.mesos.elasticsearch.common.cli.ElasticsearchCLIParameter;
 import org.apache.mesos.elasticsearch.common.cli.ZookeeperCLIParameter;
@@ -12,6 +11,7 @@ import org.apache.mesos.elasticsearch.common.zookeeper.formatter.IpPortsListZKFo
 import org.apache.mesos.elasticsearch.common.zookeeper.formatter.MesosZKFormatter;
 import org.apache.mesos.elasticsearch.common.zookeeper.formatter.ZKFormatter;
 import org.apache.mesos.elasticsearch.common.zookeeper.parser.ZKAddressParser;
+import org.apache.mesos.elasticsearch.scheduler.util.NetworkUtils;
 
 import java.net.InetSocketAddress;
 
@@ -48,6 +48,8 @@ public class Configuration {
     public static final String JAVA_HOME = "--javaHome";
     public static final String CONSUL = "--passConsulEndpoint";
 //    public static final String ADVERTISEIP = "--advertiseIp";
+    public static final String USE_IP_ADDRESS = "--useIpAddress";
+
     @Parameter(names = {EXECUTOR_HEALTH_DELAY}, description = "The delay between executor healthcheck requests (ms).", validateValueWith = CLIValidators.PositiveLong.class)
     private static Long executorHealthDelay = 30000L;
     // **** ZOOKEEPER
@@ -98,7 +100,11 @@ public class Configuration {
     private static String consul = "";
 //    @Parameter(names = {ADVERTISEIP}, description = "Advertise on provided IP address")
     private static String advertiseIp = "";
+    @Parameter(names = {USE_IP_ADDRESS}, arity = 1, description = "If true, the framework will resolve the local ip address. If false, it uses the hostname.")
+    private Boolean isUseIpAddress = false;
+
     // ****************** Runtime configuration **********************
+    private final NetworkUtils networkUtils = new NetworkUtils();
 
     public Configuration(String... args) {
         final JCommander jCommander = new JCommander();
@@ -195,36 +201,19 @@ public class Configuration {
         return executorForcePullImage;
     }
 
+    public Boolean getIsUseIpAddress() {
+        return isUseIpAddress;
+    }
+
     // ******* Helper methods
     public String getMesosStateZKURL() {
         ZKFormatter mesosStateZKFormatter = new IpPortsListZKFormatter(new ZKAddressParser());
-        if (StringUtils.isBlank(zookeeperCLI.getZookeeperFrameworkUrl())) {
-            LOGGER.info("Zookeeper framework option is blank, using Zookeeper for Mesos: " + zookeeperCLI.getZookeeperMesosUrl());
-            return mesosStateZKFormatter.format(zookeeperCLI.getZookeeperMesosUrl());
-        } else {
-            LOGGER.info("Zookeeper framework option : " + zookeeperCLI.getZookeeperFrameworkUrl());
-            return mesosStateZKFormatter.format(zookeeperCLI.getZookeeperFrameworkUrl());
-        }
+        return mesosStateZKFormatter.format(zookeeperCLI.getZookeeperMesosUrl());
     }
 
     public String getMesosZKURL() {
         ZKFormatter mesosZKFormatter = new MesosZKFormatter(new ZKAddressParser());
         return mesosZKFormatter.format(zookeeperCLI.getZookeeperMesosUrl());
-    }
-
-    public String getFrameworkZKURL() {
-        ZKFormatter mesosZKFormatter = new IpPortsListZKFormatter(new ZKAddressParser());
-        if (StringUtils.isBlank(zookeeperCLI.getZookeeperFrameworkUrl())) {
-            LOGGER.info("Zookeeper framework option is blank, using Zookeeper for Mesos: " + zookeeperCLI.getZookeeperMesosUrl());
-            return mesosZKFormatter.format(zookeeperCLI.getZookeeperMesosUrl());
-        } else {
-            LOGGER.info("Zookeeper framework option : " + zookeeperCLI.getZookeeperFrameworkUrl());
-            return mesosZKFormatter.format(zookeeperCLI.getZookeeperFrameworkUrl());
-        }
-    }
-
-    public long getFrameworkZKTimeout() {
-        return zookeeperCLI.getZookeeperFrameworkTimeout();
     }
 
     public ZookeeperCLIParameter getZookeeperCLI() {
@@ -250,9 +239,13 @@ public class Configuration {
     public String getFrameworkFileServerAddress() {
         String result = "";
         if (frameworkFileServerAddress != null) {
-            result = "http://" + frameworkFileServerAddress.getHostName() + ":" + frameworkFileServerAddress.getPort();
+            return networkUtils.addressToString(frameworkFileServerAddress, getIsUseIpAddress());
         }
         return result;
+    }
+
+    public String webUiAddress() {
+        return networkUtils.addressToString(networkUtils.hostSocket(getWebUiPort()), getIsUseIpAddress());
     }
 
     public void setFrameworkFileServerAddress(InetSocketAddress addr) {

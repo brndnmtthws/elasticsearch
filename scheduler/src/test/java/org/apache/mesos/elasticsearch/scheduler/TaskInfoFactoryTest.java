@@ -3,7 +3,9 @@ package org.apache.mesos.elasticsearch.scheduler;
 import com.google.protobuf.ByteString;
 import org.apache.mesos.Protos;
 import org.apache.mesos.elasticsearch.common.Discovery;
+import org.apache.mesos.elasticsearch.scheduler.state.ClusterState;
 import org.apache.mesos.elasticsearch.scheduler.state.FrameworkState;
+import org.apache.mesos.elasticsearch.scheduler.util.Clock;
 import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,6 +40,9 @@ public class TaskInfoFactoryTest {
     private FrameworkState frameworkState;
 
     @Mock
+    private ClusterState clusterState;
+
+    @Mock
     private Configuration configuration;
 
     @Mock
@@ -49,7 +54,6 @@ public class TaskInfoFactoryTest {
         when(frameworkState.getFrameworkID()).thenReturn(frameworkId);
         when(configuration.getTaskName()).thenReturn("esdemo");
         when(configuration.getMesosZKURL()).thenReturn("zk://zookeeper:2181/mesos");
-        when(configuration.getFrameworkZKURL()).thenReturn("zk://zookeeper:2181/mesos");
         when(configuration.getExecutorImage()).thenReturn(Configuration.DEFAULT_EXECUTOR_IMAGE);
         when(configuration.getElasticsearchSettingsLocation()).thenReturn("/var");
         when(configuration.getElasticsearchNodes()).thenReturn(3);
@@ -61,8 +65,7 @@ public class TaskInfoFactoryTest {
 
     @Test
     public void testCreateTaskInfo() {
-        TaskInfoFactory factory = new TaskInfoFactory();
-        factory.clock = clock;
+        TaskInfoFactory factory = new TaskInfoFactory(clusterState);
 
         Date now = new DateTime().withDayOfMonth(1).withDayOfYear(1).withYear(1970).withHourOfDay(1).withMinuteOfHour(2).withSecondOfMinute(3).withMillisOfSecond(400).toDate();
         when(clock.now()).thenReturn(now);
@@ -71,7 +74,7 @@ public class TaskInfoFactoryTest {
 
         Protos.Offer offer = getOffer(frameworkState.getFrameworkID());
 
-        Protos.TaskInfo taskInfo = factory.createTask(configuration, frameworkState, offer);
+        Protos.TaskInfo taskInfo = factory.createTask(configuration, frameworkState, offer, clock);
 
         assertEquals(configuration.getTaskName(), taskInfo.getName());
         assertEquals(offer.getSlaveId(), taskInfo.getSlaveId());
@@ -131,8 +134,13 @@ public class TaskInfoFactoryTest {
         when(configuration.isFrameworkUseDocker()).thenReturn(false);
         String address = "http://localhost:1234";
         when(configuration.getFrameworkFileServerAddress()).thenReturn(address);
-        TaskInfoFactory factory = new TaskInfoFactory();
-        Protos.TaskInfo taskInfo = factory.createTask(configuration, frameworkState, getOffer(frameworkState.getFrameworkID()));
+        TaskInfoFactory factory = new TaskInfoFactory(clusterState);
+
+        Date now = new DateTime().withDayOfMonth(1).withDayOfYear(1).withYear(1970).withHourOfDay(1).withMinuteOfHour(2).withSecondOfMinute(3).withMillisOfSecond(400).toDate();
+        when(clock.now()).thenReturn(now);
+        when(clock.nowUTC()).thenReturn(ZonedDateTime.now(ZoneOffset.UTC));
+
+        Protos.TaskInfo taskInfo = factory.createTask(configuration, frameworkState, getOffer(frameworkState.getFrameworkID()), clock);
         assertFalse(taskInfo.getContainer().isInitialized());
         assertTrue(taskInfo.getExecutor().getCommand().isInitialized());
         assertEquals(1, taskInfo.getExecutor().getCommand().getUrisCount());
@@ -144,9 +152,6 @@ public class TaskInfoFactoryTest {
         final ZonedDateTime nowUTC = ZonedDateTime.now(ZoneOffset.UTC);
         when(clock.nowUTC()).thenReturn(nowUTC.minusYears(100));
 
-        TaskInfoFactory factory = new TaskInfoFactory();
-        factory.clock = clock;
-
         final Protos.TaskID taskId = Protos.TaskID.newBuilder().setValue("TaskID").build();
 
         final Protos.TaskInfo taskInfo = createTaskInfo(taskId, createData(Optional.of(nowUTC)));
@@ -156,7 +161,7 @@ public class TaskInfoFactoryTest {
                 .setState(Protos.TaskState.TASK_STAGING)
                 .build();
 
-        final Task task = factory.parse(taskInfo, taskStatus);
+        final Task task = TaskInfoFactory.parse(taskInfo, taskStatus, clock);
         assertEquals(nowUTC, task.getStartedAt());
         verify(clock, never()).nowUTC();
     }
@@ -165,9 +170,6 @@ public class TaskInfoFactoryTest {
     public void canParseTaskWithoutTimestamp() throws Exception {
         final ZonedDateTime nowUTC = ZonedDateTime.now(ZoneOffset.UTC);
         when(clock.nowUTC()).thenReturn(nowUTC);
-
-        TaskInfoFactory factory = new TaskInfoFactory();
-        factory.clock = clock;
 
         final Protos.TaskID taskId = Protos.TaskID.newBuilder().setValue("TaskID").build();
 
@@ -178,7 +180,7 @@ public class TaskInfoFactoryTest {
                 .setState(Protos.TaskState.TASK_STAGING)
                 .build();
 
-        final Task task = factory.parse(taskInfo, taskStatus);
+        final Task task = TaskInfoFactory.parse(taskInfo, taskStatus, clock);
         assertEquals(nowUTC, task.getStartedAt());
     }
 
@@ -186,9 +188,6 @@ public class TaskInfoFactoryTest {
     public void canParseTaskCappedTimestamp() throws Exception {
         final ZonedDateTime nowUTC = ZonedDateTime.now(ZoneOffset.UTC);
         when(clock.nowUTC()).thenReturn(nowUTC);
-
-        TaskInfoFactory factory = new TaskInfoFactory();
-        factory.clock = clock;
 
         final Protos.TaskID taskId = Protos.TaskID.newBuilder().setValue("TaskID").build();
 
@@ -207,7 +206,7 @@ public class TaskInfoFactoryTest {
                 .setState(Protos.TaskState.TASK_STAGING)
                 .build();
 
-        final Task task = factory.parse(taskInfo, taskStatus);
+        final Task task = TaskInfoFactory.parse(taskInfo, taskStatus, clock);
         assertEquals(nowUTC, task.getStartedAt());
     }
 
